@@ -5,3 +5,4 @@ nasa-viirs/*
 data/*
 VNP09GA/*
 outputs/*
+*.pyc
