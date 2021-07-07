@@ -47,19 +47,28 @@ def get_geoInfo_and_projection(f):
     return geoInfo, prj
 
 
-def convert_h5_to_cog(inDir, BANDS=["M3", "M4", "M5", 'M7', "M8", "Q2"], band_scale_flag=True):
-    # os.chdir(inDir)                                                         # Change to working directory
-    outDir = os.path.normpath(os.path.split(inDir)[0]+os.sep+'output')+'\\' # Set output directory
+def convert_h5_to_cog(inDir, outDir, BANDS=["M3", "M4", "M5", "M7", "M10", "M11", "QF2"], band_scale_flag=False):
+    # os.chdir(inDir)   
+    # VNP = Path(os.path.split(inDir)[0])                                                      # Change to working directory
+    
+    # outDir = Path(os.path.split(VNP)[0]) / 'COG' # Set output directory
+    
+    print("BADNS: ", BANDS)
     if not os.path.exists(outDir): os.makedirs(outDir)                      # Create output directory
 
 
     fileList = [file for file in os.listdir(inDir) if file.endswith('.h5') and file.startswith('VNP09GA')] # Search for .h5 files in current directory
-    for f in fileList: print(f)                                                                       # Print files in list
+    
+    print("------------------------------------")
+    for f in fileList: print(f)       
+    print("------------------------------------")                                                                # Print files in list
 
     date = [] # Create empty list to store dates of each file
     i = 0     # Set up iterator for automation in cell block below
 
     for t in fileList:
+        print(f"\n----> {t} <----")
+
         yeardoy = t.split('.')[1][1:]                                                                  # Split name,retrieve ob date
         outName = t.rsplit('.', 1)[0]                                                                  # Keep filename for outname
         date1 = dt.datetime.strptime(yeardoy,'%Y%j').strftime('%m/%d/%Y')                              # Convert date
@@ -86,6 +95,7 @@ def convert_h5_to_cog(inDir, BANDS=["M3", "M4", "M5", 'M7', "M8", "Q2"], band_sc
 
         band_dict = {}
         for band_name in BANDS:
+            # print(band_name)
             band = f[[a for a in allSDS if band_name in a][0]][()]   
                                                              # Open SDS M5 = Red
             if band_scale_flag and ('QF' not in band_name):
@@ -109,7 +119,10 @@ def convert_h5_to_cog(inDir, BANDS=["M3", "M4", "M5", 'M7', "M8", "Q2"], band_sc
                 data = params[p]['data']                                                               # Define array to be exported
                 data[data.mask == True] = fillValue                                                    # Masked values = fill value
             except: AttributeError
-            outputName = os.path.normpath('{}{}_{}.tif'.format(outDir, outName, params[p]['band']))    # Generate output filename
+
+            # outputName = os.path.normpath('{}{}.tif'.format(outDir, outName))    # Generate output filename
+            outputName = str(outDir / f"{outName}.tif")   # Generate output filename
+
             nRow, nCol = data.shape[0], data.shape[1]                                                  # Define row/col from array
             dataType = gdal_array.NumericTypeCodeToGDALTypeCode(data.dtype)                            # Define output data type
             driver = gdal.GetDriverByName('GTiff')                                                     # Select GDAL GeoTIFF driver
@@ -123,9 +136,10 @@ def convert_h5_to_cog(inDir, BANDS=["M3", "M4", "M5", 'M7', "M8", "Q2"], band_sc
                         "COMPRESS=LZW",
                         "INTERLEAVE=BAND"]                                       # Set options to RGB TIFF
             outFile = driver.Create(outputName, nCol, nRow, len(BANDS), dataType, options=options)          # Specify parameters of GTIFF
+            
             for idx, band in enumerate(BANDS):  
                 print(idx, band)                                                       # loop through each band (3)
-                outFile.GetRasterBand(idx+1).WriteArray(data[..., i])                                  # Write to output bands 1-3
+                outFile.GetRasterBand(idx+1).WriteArray(data[..., idx])                                  # Write to output bands 1-3
                 outFile.GetRasterBand(idx+1).SetNoDataValue(0)                                       # Set fill val for each band
                 outFile.GetRasterBand(idx+1).SetDescription(band)
                 
@@ -139,13 +153,24 @@ def convert_h5_to_cog(inDir, BANDS=["M3", "M4", "M5", 'M7', "M8", "Q2"], band_sc
 if __name__ == "__main__":
     
     
-    inDir = "G:/PyProjects/nasa-viirs-modis-nrt/data"                               # Update to dir on your OS containing VIIRS files
+    # inDir = "G:/PyProjects/nasa-viirs-modis-nrt/data"                               # Update to dir on your OS containing VIIRS files
     
-    # 1km vs. 500m --> "M5", "M7", "M10" vs. "I1", "I2", "I3"
-    # 500m: "M3",     "M4",  "I1",  "I2",   "I3",    "M11",  "QF2"
-    # 1km:  "M3",     "M4",  "M5",  "M7",   "M10",    "M11",  "QF2"
-    # "Blue", "Green", "Red", "NIR", "SWIR1", "SWIR2", "BitMask"
-    BANDS = ["M3",     "M4",  "M5",  "M7",   "M10",    "M11",  "QF2"]
+    # # 1km vs. 500m --> "M5", "M7", "M10" vs. "I1", "I2", "I3"
+    # # 500m: "M3",     "M4",  "I1",  "I2",   "I3",    "M11",  "QF2"
+    # # 1km:  "M3",     "M4",  "M5",  "M7",   "M10",    "M11",  "QF2"
+    # # "Blue", "Green", "Red", "NIR", "SWIR1", "SWIR2", "BitMask"
+    # BANDS = ["M3",     "M4",  "M5",  "M7",   "M10",    "M11",  "QF2"]
 
-    convert_h5_to_cog(inDir, BANDS)
+    # convert_h5_to_cog(inDir, BANDS)
+
+    # from main_viirs import convert_h5_to_cog
+
+
+    dataPath = Path('/content/drive/MyDrive/VIIRS/VNP09GA.001')
+    for date in os.listdir(dataPath):
+
+        outDir = Path(os.path.split(dataPath)[0]) / 'COG' / date # Set output directory
+        print(f"outDir: {outDir}")
+
+        convert_h5_to_cog(inDir=dataPath / date, outDir=outDir)
     
