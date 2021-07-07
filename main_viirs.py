@@ -1,4 +1,9 @@
 # https://git.earthdata.nasa.gov/projects/LPDUR
+# wavelength: https://ladsweb.modaps.eosdis.nasa.gov/missions-and-measurements/viirs/
+# viirs ftp: https://e4ftl01.cr.usgs.gov/VIIRS/VNP09GA.001/2021.07.05/
+# https://ladsweb.modaps.eosdis.nasa.gov/missions-and-measurements/products/VNP09GA/
+# hHHvVV GRID: https://modis-land.gsfc.nasa.gov/MODLAND_grid.html
+
 
 from prettyprinter import pprint
 from pathlib import Path
@@ -42,15 +47,7 @@ def get_geoInfo_and_projection(f):
     return geoInfo, prj
 
 
-
-if __name__ == "__main__":
-    
-    # "M3",     "M4",  "I1",  "I2",   "I3",    "M11",  "QF2"
-    # "Blue", "Green", "Red", "NIR", "SWIR1", "SWIR2", "BitMask"
-    BANDS = ["M3", "M4", "M5", 'M7', "M8"]
-
-
-    inDir = "G:/PyProjects/nasa-viirs-modis-nrt/data"                               # Update to dir on your OS containing VIIRS files
+def convert_h5_to_cog(inDir, BANDS=["M3", "M4", "M5", 'M7', "M8", "Q2"], band_scale_flag=True):
     # os.chdir(inDir)                                                         # Change to working directory
     outDir = os.path.normpath(os.path.split(inDir)[0]+os.sep+'output')+'\\' # Set output directory
     if not os.path.exists(outDir): os.makedirs(outDir)                      # Create output directory
@@ -89,17 +86,20 @@ if __name__ == "__main__":
 
         band_dict = {}
         for band_name in BANDS:
-            band = f[[a for a in allSDS if band_name in a][0]]                                                     # Open SDS M5 = Red
-            band_scaled = band[()] #* scaleFactor
-            band_dict[band_name] = band_scaled                                                   
+            band = f[[a for a in allSDS if band_name in a][0]][()]   
+                                                             # Open SDS M5 = Red
+            if band_scale_flag and ('QF' not in band_name):
+                band = band * scaleFactor
+
+            band_dict[band_name] = band                                                   
 
         data = np.dstack(tuple(band_dict.values()))
         print(data.shape)
 
         data[data == fillValue * scaleFactor] = 0 # Set fill value equal to nan
         
-        qf = f[[a for a in allSDS if 'QF5' in a][0]][()]                                               # Import QF5 SDS
-        qf2 = f[[a for a in allSDS if 'QF2' in a][0]][()]                                              # Import QF2 SDS                                                                  # Append to list
+        # qf = f[[a for a in allSDS if 'QF5' in a][0]][()]                                               # Import QF5 SDS
+        # qf2 = f[[a for a in allSDS if 'QF2' in a][0]][()]                                              # Import QF2 SDS                                                                  # Append to list
         
         params = {
                 'all':{'data':data, 'band': 'all'}
@@ -135,3 +135,17 @@ if __name__ == "__main__":
 
         print('Processed file: {} of {}'.format(i+1, len(fileList)))                                    # Print the progress
         i += 1                                                                                         # increase iterator by one
+
+if __name__ == "__main__":
+    
+    
+    inDir = "G:/PyProjects/nasa-viirs-modis-nrt/data"                               # Update to dir on your OS containing VIIRS files
+    
+    # 1km vs. 500m --> "M5", "M7", "M10" vs. "I1", "I2", "I3"
+    # 500m: "M3",     "M4",  "I1",  "I2",   "I3",    "M11",  "QF2"
+    # 1km:  "M3",     "M4",  "M5",  "M7",   "M10",    "M11",  "QF2"
+    # "Blue", "Green", "Red", "NIR", "SWIR1", "SWIR2", "BitMask"
+    BANDS = ["M3",     "M4",  "M5",  "M7",   "M10",    "M11",  "QF2"]
+
+    convert_h5_to_cog(inDir, BANDS)
+    
