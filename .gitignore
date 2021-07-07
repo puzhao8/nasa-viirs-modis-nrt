@@ -6,3 +6,4 @@ data/*
 VNP09GA/*
 outputs/*
 *.pyc
+__pycache__/*
