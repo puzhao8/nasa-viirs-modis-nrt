@@ -30,6 +30,21 @@ def get_geoInfo_and_projection(f):
 
     yRes, xRes = -926.6254330555555,  926.6254330555555 # Define the x and y resolution   
     # yRes, xRes = -500,  500 # Define the x and y resolution   
+
+    '''Currently, VIIRS HDF-EOS5 files do not contain information regarding the spatial resolution of the dataset within.'''
+    # if nRow == 1200:                      # VIIRS A1 - 1km or 1000m
+    #     yRes = -926.6254330555555    
+    #     xRes = 926.6254330555555
+    # elif nRow == 2400:                    # VIIRS H1 - 500m
+    #     yRes = -463.31271652777775
+    #     xRes = 463.31271652777775
+    # elif nRow == 3600 and nCol == 7200:    # VIIRS CMG
+    #     yRes = -0.05
+    #     xRes = 0.05
+    #     # Re-set upper left dims for CMG product                
+    #     ulcLon = -180.00
+    #     ulcLat = 90.00
+
     geoInfo = (ulcLon, xRes, 0, ulcLat, 0, yRes)        # Define geotransform parameters
 
     prj = 'PROJCS["unnamed",\
@@ -44,7 +59,10 @@ def get_geoInfo_and_projection(f):
     PARAMETER["false_northing",0], \
     UNIT["Meter",1]]'
 
-    return geoInfo, prj
+    projInfo = {'SINU':'PROJCS["unnamed",GEOGCS["Unknown datum based upon the custom spheroid", DATUM["Not specified (based on custom spheroid)", SPHEROID["Custom spheroid",6371007.181,0]],PRIMEM["Greenwich",0], UNIT["degree",0.0174532925199433]], PROJECTION["Sinusoidal"],PARAMETER["longitude_of_center",0],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["Meter",1]]',
+            'GEO':'GEOGCS["Unknown datum based upon the Clarke 1866 ellipsoid", DATUM["Not specified (based on Clarke 1866 spheroid)", SPHEROID["Clarke 1866",6378206.4,294.9786982139006]], PRIMEM["Greenwich",0], UNIT["degree",0.0174532925199433]]'}
+
+    return geoInfo, projInfo['GEO']
 
 
 def convert_h5_to_cog(inDir, outDir, BANDS=["M3", "M4", "M5", "M7", "M10", "M11", "QF2"], band_scale_flag=False):
